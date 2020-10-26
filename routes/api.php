@@ -1,7 +1,7 @@
 <?php
 
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ProductController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,3 +20,7 @@ use Illuminate\Support\Facades\Route;
 //});
 
 Route::resource('/product', ProductController::class);
+Route::get('/product-sync', [ProductController::class, 'synchronize']);
+
+Route::resource('/contact', ContactController::class);
+Route::get('/contact-sync', [ContactController::class, 'synchronize']);
