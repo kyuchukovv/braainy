@@ -6,11 +6,11 @@
 <body>
 <div class="container">
 
-    <header class="row" style="height: 50px">
+    <header class="row" style="height: 70px">
         @include('includes.header')
     </header>
 
-    <div id="main" class="row">
+    <div id="main" class="container">
 
         @yield('content')
 
