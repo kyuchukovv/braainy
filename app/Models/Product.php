@@ -19,22 +19,39 @@ class Product extends Model
      */
     protected $casts = [
         'isArchived' => 'boolean',
-        'isInventory' => 'boolean'
+        'isInInventory' => 'boolean'
     ];
     /**
      * Here we specify request input attributes
      * @var string[]
      */
     protected $fillable = [
+        'product_id',
         'name',
         'description',
         'productNo',
+        'organization_id',
+        'account_id',
+        'salesTaxRulesetId',
         'suppliersProductNo',
         'isArchived',
         'isInInventory',
-        'imageId',
-        'imageUrl',
+        'imageId'
     ];
     // This make all fields fillable in model
     protected $guarded = [];
+
+    public function getFillableAttributes(){
+        $fillable = $this->getFillable();
+        $attributes = $this->getAttributes();
+
+        foreach ($attributes as $key => $attribute){
+            if (!array_search($key, $fillable)) {
+                unset($attributes[$key]);
+            }
+        }
+
+        return $attributes;
+    }
+
 }

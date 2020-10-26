@@ -16,23 +16,26 @@ use Illuminate\Support\Facades\Log;
  */
 class ProductController extends Controller
 {
+    /**
+     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View
+     */
     public function index()
     {
         $data = Product::all();
-        Log::info("products: ");
-        Log::info($data);
-        return view('pages/products', $data);
+
+        return view('pages/products', ['data' => $data]);
 
     }
 
-    public function get(Request $request)
-    {
-
-    }
-
+    /**
+     * @param $id
+     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View
+     */
     public function show($id)
     {
+        $product = Product::findOrFail($id);
 
+        return view('pages/product', ['data' => $product]);
     }
 
     /**
@@ -55,35 +58,116 @@ class ProductController extends Controller
         $product = new Product();
         // Relations
         $product->product_id = $newProduct['id'];
+        $product->name = $newProduct['name'];
+        $product->description = $newProduct['description'];
         $product->organization_id = $newProduct['organizationId'];
+        $product->productNo = $newProduct['productNo'];
+        $product->isArchived = $newProduct['isArchived'];
+        $product->isInInventory = $newProduct['isInInventory'];
+        $product->imageId = $newProduct['imageId'];
+        $product->suppliersProductNo = $newProduct['suppliersProductNo'];
         $product->account_id = $newProduct['accountId'];
         $product->salesTaxRulesetId = $newProduct['salesTaxRulesetId'];
         $product->inventoryAccountId = $newProduct['inventoryAccountId'];
-        // Attributes
-        foreach ($product->getFillable() as $attribute) {
-            $product->setAttribute($attribute, $newProduct[$attribute]);
-        }
+
 
         $product->saveOrFail();
 
         return response()->json($product->fresh());
     }
 
-    public function update(UpdateProduct $request)
+    /**
+     * @param UpdateProduct $request
+     * @param $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function update(UpdateProduct $request, $id)
     {
         // Validate request input data
         $data = $request->validated();
+        // Find local product and update with new values
         try {
-            $product = Product::where('product_id')->first();
-        } catch (ModelNotFoundException $exception){
+            $product = Product::query()->findOrFail($id);
+        } catch (ModelNotFoundException $exception) {
             Log::error($exception->getMessage());
             return response()->json("Error code: {$exception->getCode()}. Message: {$exception->getMessage()}");
         }
-        // Update model
+        $product->update($data);
+        $product = $product->fresh();
+        // Find and Update/Create product on Billy
+        try {
+            $response = (new ProductResource())::update($id, $data);
+        } catch (\Exception $exception) {
+            Log::error("Error code: {$exception->getCode()}. Message: {$exception->getMessage()}");
+            return response($exception->getMessage(), $exception->getCode());
+        }
+        // Updating failed
+        if (!$response['meta']['success']) {
+            // General error while updating Product
+            Log::error($response);
+            return response()->json($response);
+        }
+
+        return response()->json($product->fresh());
     }
 
-    public function delete()
+    /**
+     * @param $id
+     */
+    public function destroy($id)
     {
+        $product = Product::query()->findOrFail($id);
+        $response = (new ProductResource())::delete($product->product_id);
+        if (!$response['meta']['success']) {
+            // Failed deleting resource in Billy
+            Log::error("Failed deleting product with ID: {$product->product_id}. Message: {$response['errorMessage']}");
+            return response()->json(['success' => false, 'message' => $response['errorMessage']]);
+        }
+        $deleted = $product->delete();
+        if (!$deleted) {
+            // Failed deleting local product
+            Log::error('Failed deleting product: ' . $product->id);
+            return response()->json(['success' => false, 'message' => 'Failed deleting product: ' . $product->id]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Product deleted successfully.']);
+    }
+
+    /**
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function synchronize()
+    {
+        $allProducts = (new ProductResource())::all();
+
+        $updated = 0;
+        foreach ($allProducts['products'] as $masterProduct){
+            try {
+                $localProduct = Product::query()->updateOrCreate(['product_id' => $masterProduct['id']],
+                    [
+                        'product_id' => $masterProduct['id'],
+                        'name' => $masterProduct['name'],
+                        'description' => $masterProduct['description'],
+                        'account_id' => $masterProduct['accountId'],
+                        'inventoryAccountId' => $masterProduct['inventoryAccountId'],
+                        'organization_id' => $masterProduct['organizationId'],
+                        'productNo' => $masterProduct['productNo'],
+                        'salesTaxRulesetId' => $masterProduct['salesTaxRulesetId'],
+                        'suppliersProductNo' => $masterProduct['suppliersProductNo'],
+                        'isArchived' => $masterProduct['isArchived'],
+                        'isInInventory' => $masterProduct['isInInventory'],
+                        'imageId' => $masterProduct['imageId'],
+                    ]);
+            } catch (\Exception $exception){
+                Log::error($exception->getMessage());
+                continue;
+            }
+
+            if ($localProduct->wasChanged()){
+                $updated++;
+            }
+        }
+        return response()->json(['message' => "Updated {$updated} products."]);
 
     }
 }
