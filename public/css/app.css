@@ -1,0 +1,13 @@
+.header-navbar {
+    color: #0C9A9A;
+}
+
+.header-navbar li {
+    display: inline;
+    float: left;
+}
+.header-navbar a {
+    display: block;
+    padding: 8px;
+    background-color: #dddddd;
+}

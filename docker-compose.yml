@@ -1,0 +1,65 @@
+version: "3"
+services:
+  # Nginx Service
+  server:
+    container_name: braainy-nginx
+    image: nginx
+    working_dir: /www
+    ports:
+      - "80:80"
+    volumes:
+      - ./site.conf:/etc/nginx/conf.d/default.conf
+      - ./:/www:delegated
+    networks:
+      - mynet
+  # Laravel Application Service
+  webapp:
+    container_name: braainy-php
+    image: lostdesign/laravel:1.2
+    working_dir: /www
+    volumes:
+      - ./:/www:delegated
+    networks:
+      - mynet
+  # MySQL Service
+  database:
+    container_name: braainy-mysql
+    image: mysql:5.7
+    tty: true
+    restart: unless-stopped
+    ports:
+      - "3336:3306"
+    environment:
+      - MYSQL_DATABASE=dbraainy
+      - MYSQL_USER=braainy
+      - MYSQL_PASSWORD=qwerty
+      - MYSQL_ROOT_PASSWORD=qwertyroot
+    volumes:
+      - mysqldata:/var/lib/mysql
+      - ./data/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - mynet
+  # NodeJS Service
+  frontend:
+    container_name: braainy-npm
+    image: wiwatsrt/docker-laravel-nodejs
+    working_dir: /var/www
+    entrypoint: ['npm']
+    volumes:
+      - ./:/var/www
+    networks:
+      - mynet
+  # Redis service
+  redis:
+    container_name: braainy-redis
+    image: redis
+    ports:
+      - "6382:6379"
+#Docker Networks
+networks:
+  mynet:
+    driver: bridge
+#Volumes
+volumes:
+  mysqldata:
+    driver: local
