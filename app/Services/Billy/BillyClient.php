@@ -7,6 +7,8 @@ use App\Services\Service;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\RequestOptions;
+use Illuminate\Support\Facades\Log;
+use function PHPUnit\Framework\throwException;
 
 /**
  * Class BillyClient
@@ -47,10 +49,10 @@ class BillyClient extends Service
     }
 
     /**
-     * @param string $method
-     * @param string $uri
+     * @param $method
+     * @param $uri
      * @param $payload
-     * @return array
+     * @return array|\Illuminate\Http\JsonResponse
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
     protected function request($method, $uri, $payload)
@@ -60,15 +62,14 @@ class BillyClient extends Service
         try {
             $response = $this->http()
                 ->request($method, $url, [RequestOptions::JSON => $payload]);
-            $status = 'success';
         } catch (ClientException $exception) {
             $response = $exception->getResponse();
-            $status = 'error';
         }
-
         $response = json_decode($response->getBody()->getContents(), true);
-
-        return compact('status', 'response');
+        if (!$response['meta']['success']){
+            throw new \Exception($response['errorMessage'], $response['meta']['statusCode']);
+        }
+        return $response;
     }
 
     /**
@@ -101,9 +102,9 @@ class BillyClient extends Service
      * @return array
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public function delete($uri, $payload)
+    public function delete($uri)
     {
-        return $this->request('DELETE', $uri, $payload);
+        return $this->request('DELETE', $uri, []);
     }
 
     /**
