@@ -20,6 +20,14 @@ Now just run:
 ```shell script
   docker-compose up -d
 ```
+If you encounter error such as: "[ERROR] --initialize specified but the data directory has files in it. Aborting."
+There is huge chance you are rinning out of space in your docker instance.
+You can clean all unusued containers and volumes which are not attached to any containers:
+```shell script
+  docker system prune
+  or better:
+ docker system prune --volumes
+```
 Run 
 ```shell script
   docker-compose ps
